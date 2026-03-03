@@ -1,0 +1,148 @@
+---
+title: "Introduction to Quarto"
+format: html
+bibliography: references.bib
+---
+
+Markdown formatting:
+
+Above is called the YAML. This includes data such as title, format, and other data such as date, author, etc.
+
+Here are some examples of things you can do with the formatting...
+
+# This is a large title
+
+## This is a smaller title
+
+####### This is even smaller
+
+*Italic Text* **Bold Text**
+
+```         
+Markdown quick reference in the help tab will show what kinds of things you can do and their shortcuts.
+```
+
+> Hello Yall Whyyyyy
+
+------------------------------------------------------------------------
+
+```         
+It is easier to write citations in the visual tab.
+Use the insert tab to onclude a citation. 
+It will pop up a seperate tab to search for an article, such as searching for a doi.
+Can link to your citation manager if you need it. 
+
+Inserting a table is also easier in the visual tab.
+There is a table tab here where you can treat it like a normal text based table. 
+Can build then in the source tab, but it's much more complicated to manipulate.
+```
+
+Here is an example of a citation. It will provide a link like this and a full citation below.[@oke2020]
+
+Here is an example of a table.
+
+| 1   | 2   | 3   |
+|-----|-----|-----|
+|     |     |     |
+|     |     |     |
+|     |     |     |
+
+-----
+
+Working with the BGChem2008 data:
+
+We will be using r functions contained in different R packages for this exercise. 
+Later in the course we will learn to write our own R packages.
+
+# 1.Introduction
+
+## a. About the data
+  - water sample data from the arctic ocean, downloaded form the arctic data center: [Tweedie ADC data](https://srcticdatacenter.io/catalog/view/doi:10.18739/A25T3FZ8X)
+
+## b.Setup
+
+```{r}
+#| warning: false 
+library(readr)
+library(here)
+```
+## c. Read in Data
+```{r}
+#| warning: false
+bg_chem <- read_csv(here("data/BGchem2008data.csv"))
+
+```
+
+# 2. Analysis
+
+# a. Calculate summary statistics
+
+```{r}
+#| warning: false
+#| eval: false
+#| echo: false
+
+# FYI the | key is a back slash (above the enter key)
+# this code below will list the column names
+colnames(bg_chem)
+
+# this will show the data structure
+str(bg_chem)
+
+# this will show the first 6 lines of the data frame
+head(bg_chem)
+
+# this will show summary statistics of each column
+summary(bg_chem)
+
+#this will print unique values in a specific column using the $
+unique(bg_chem$Date)
+
+```
+
+
+# b. Calculate mean Redfield ratio
+
+```{r}
+# calculate some means
+nitrate <- mean(bg_chem$NO3)
+nitrite <- mean(bg_chem$NO2)
+amm <- mean(bg_chem$NH4)
+phos <- mean(bg_chem$P)
+
+
+```
+
+
+# c. Plot Redfield ratio
+
+```{r}
+ratio <- (nitrate + nitrite + amm) / phos
+```
+
+Here is the ratio that we calculated: `r round(ratio)`
+
+```
+This is a tiny chuck of r we are referring to. Need to put the code in ticks(`)
+Anytime you're doing a next step of analysis, it's good to have it in it's own chunk. 
+```
+
+Here is a graph of the ratio.
+
+```{r}
+plot(bg_chem$P, bg_chem$NO2 + bg_chem$NO3 + bg_chem$NH4)
+```
+
+
+
+
+## 3. Conclusion
+
+``` 
+It is good to periodically save and render your Quarto, this can help you identify any errors in your code.
+
+Another way to check for errors is to clear your environment completely and run your script from the beginning. This will expose if you have any undefined objects that 
+```
+
+# Citations
+
