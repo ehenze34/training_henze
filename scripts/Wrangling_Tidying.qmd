@@ -1,0 +1,289 @@
+---
+title: "Tidying and Wrangling"
+format: html
+---
+
+```{r}
+#| message: false
+
+library(dplyr)
+library(tidyr)
+library(readr)
+```
+
+# Data Sources
+
+## Read in our Data
+
+```{r}
+#| message: false
+
+catch_original <- read_csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.302.1")
+```
+
+## Explore
+
+```{r}
+# It's a good idea to take a preliminary look at your data first before diving in...
+
+colnames(catch_original)
+# column names
+
+head(catch_original)
+# provides the first 5 lines of code
+
+summary(catch_original)
+# summary statistics of the columns
+
+unique(catch_original$Region)
+# looks at the values of specific columns.
+
+```
+
+## The pipe operator %>% (the shortcut is control + shift + m). It will link together different operations. 
+
+# Cleaning and Reshaping
+
+## Using the Select() fucntion
+
+```{r}
+# select to keep the columns that you want
+
+catch_data <- catch_original %>% 
+  select(Region, Year, Chinook, Sockeye, Coho, Pink, Chum)
+head(catch_data)
+
+#to drop columns you don't want
+
+catch_data <- catch_original %>% 
+  select(-All, -notesRegCode)
+head(catch_data)
+
+```
+
+# Check column types
+```{r}
+# this gives you a look at the data
+glimpse(catch_data)
+
+```
+
+## Changing the Column contents with mutate()
+
+```{r}
+# change the Chinook column to numeric from characters
+
+catch_clean <- catch_data %>% 
+  mutate(Chinook = as.numeric(Chinook))
+
+#the error appears because there are some non-numeric values. In our case, a 1 has been replaced with an I. We can fix this.
+```
+
+```{r}
+is.na(catch_clean$Chinook)
+
+# get the location of the NA value
+i <- which(is.na(catch_clean$Chinook))
+
+# look at the row in the data 
+catch_data[i,]
+
+# use the mutate function to clean this up
+# you can have multiple things you mutate at once in the mutate function.
+catch_clean <- catch_data %>% 
+  mutate(Chinook = if_else(condition = Chinook == "I",
+                           true = "1",
+                           false = Chinook),
+         Chinook = as.numeric(Chinook))
+
+# double check that the error has be resolved 
+head(catch_clean)
+
+# you can double check here too
+catch_clean[i,]
+
+```
+
+## Changing file shape using pivot_longer() and pivot_wider()
+
+```{r}
+# let's put all the species in one column
+catch_long <- catch_clean %>% 
+  pivot_longer(cols = -c(Region, Year), 
+               names_to = "species", 
+               values_to = "catch")
+head(catch_long)
+
+# now lets manipulate it back to what we had before
+catch_wide <- catch_long %>% 
+  pivot_wider(names_from = species,
+              values_from = catch)
+head(catch_wide)
+
+#If you 
+
+```
+
+## Rename the Column with the Rename function
+
+```{r}
+catch_long <- catch_long %>% 
+  rename(catch_thousands = catch)
+
+
+# If you look at the metadata, the catches are actually in repsesenting 1000 catches. Let's fix this.
+
+catch_long <- catch_long %>% 
+  mutate(catch = catch_thousands * 1000) %>% 
+  select(-catch_thousands)
+
+head(catch_long)
+
+# Now we can work with the data
+```
+
+## Summary statistics using group_by() and summarize()
+
+```{r}
+#split, combine, apply framework.
+# get the average catch by region
+
+mean_region <- catch_long %>% 
+  group_by(Region) %>% 
+  summarize(mean_catch = mean(catch))
+head(mean_region)
+
+# number of rows per each group
+
+n_region <- catch_clean %>% 
+  group_by(Region) %>% 
+  summarize(n = n())
+head(n_region)
+
+
+```
+
+# Filtering rown using filters()
+```{r}
+sse_catch <- catch_long %>% 
+  filter(Region == "SSE")
+head(sse_catch)
+
+#try filtering where catch column is over 1 million fish
+#winning, I did it on my own. lol
+
+million_catch <- catch_long %>% 
+  filter(catch > 1000000)
+head(million_catch)
+
+# you can filter by more than one filters at once
+
+chinook_SSE <- catch_long %>% 
+  filter(Region == "SSE" & species == "Chinook")
+head(chinook_SSE)
+
+```
+
+## Sorting data with arrange()
+
+```{r}
+
+mean_region <- catch_long %>% 
+  group_by(Region) %>% 
+  summarize(mean_catch = mean(catch)) %>% 
+  arrange(mean_catch)
+
+head(mean_region)
+
+mean_region <- catch_long %>% 
+  group_by(Region) %>% 
+  summarize(mean_catch = mean(catch)) %>% 
+  arrange(desc(mean_catch))
+head(mean_region)
+
+```
+
+## Combining datasets together with the join function
+
+```{r}
+region_defs <- read.csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.303.1") %>% 
+    select(code, mgmtArea)
+
+head(region_defs)
+
+catch_joined <- left_join(catch_long, region_defs, by = c("Region" = "code"))
+  head(catch_joined)
+
+```
+
+```{r}
+region_defs <- read_csv("https://knb.ecoinformatics.org/knb/d1/mn/v2/object/df35b.303.1") %>% 
+    select(code, mgmtArea) %>% 
+  rename(Region = code, Region_Name = mgmtArea)
+
+
+catch_joined <- left_join(catch_long, region_defs, by = c("Region"))
+head(catch_joined)
+  
+```
+
+## Splitting and combinin values in columns
+
+```{r}
+sites_df <- data.frame(site =c("Haw-101",
+                               "Haw-103",
+                               "OAH-320"))
+head(sites_df)
+
+split_df <- sites_df %>% 
+  separate(site, c("island", "site_number"), sep = "-")
+head(split_df)
+
+```
+
+```{r}
+
+dates_df <- data.frame(
+  year = c("1930", "1930", "1932"),
+  month = c("12", "12", "12"),
+  day = c("14", "15", "16")
+)
+head(dates_df)
+
+dates_unite <- dates_df %>% 
+  unite(col = date, year, day, sep = "-")
+head(dates_unite)
+
+
+```
+
+```{r}
+
+mean_region <- catch_original %>% 
+  select(-All, -notesRegCode) %>% 
+  mutate(Chinook = if_else(Chinook == "I",
+                           "1",
+                           Chinook)) %>% 
+  mutate(Chinook = as.numeric(Chinook)) %>% 
+  pivot_longer(-c(Region, Year),
+               names_to = "species",
+               values_to = "catch") %>% 
+  mutate(catch = catch *1000) %>% 
+  group_by(Region) %>% 
+  summarize(mean_catch = mean(catch)) %>% 
+  arrange(desc(mean_catch))
+
+head(mean_region)
+
+```
+
+## save our results with write_csv()
+
+```{r}
+library(here)
+write_csv(mean_region, here("data/mean_catch_by_region.csv"))
+
+
+```
+
+
